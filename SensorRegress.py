@@ -13,6 +13,9 @@ class Node:
         measurement.append(humidity)
         self.measurement_list.append(measurement)
 
+    def clear(self):
+        self.measurement_list=[]
+
 def addMeasurementToNode(nodes,node,temp,light,humidity):
 
     if node not in nodes:

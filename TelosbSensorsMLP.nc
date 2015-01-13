@@ -28,8 +28,8 @@
 /**
   * Fennec Fox empty application driver
   *
-  * @author: Marcin K Szczodrak
-  * @updated: 02/04/2014
+  * @author: Sameer Lal 
+  * @updated: 01/13/2014
   */
 
 

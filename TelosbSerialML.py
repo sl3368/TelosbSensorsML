@@ -58,7 +58,7 @@ def check_minimum_training(nodes, training):
         if len(nodes[node_id].measurement_list) < minimum:
              minimum= len(nodes[node_id].measurement_list)
 
-    if minimum % 10 == 0:
+    if minimum % 1000 == 0:
         print "COLLECTED: "+str(minimum)+" SAMPLES FROM NODES..."
 
     if minimum < training:
@@ -76,6 +76,10 @@ class TelosbSerial:
         self.mif.addListener(self, TelosbMsg.TelosbMsg)
         self.predict_state = False
 
+    def reset(self):
+        for node in self.nodes:
+            node.clear()
+
     def send_coefficients(self,node_id,coeffs):
         for co in coeffs:
             self.send(int(node_id),int(co[0]*1000),int(co[1]*1000),int(co[2]*1000),int(co[3]*1000))
@@ -86,7 +90,8 @@ class TelosbSerial:
         if not self.predict_state:
             self.send(0,0,0,0,0)
 
-        #NEED CONDITIONAL HERE TO CHECK IF NETWORK IS IN PROPER STATE
+        #Conditional to check that network has switched to prediction state
+        #then sends the coefficients to the root
         if self.predict_state:
 
             #send confirmation
@@ -96,7 +101,7 @@ class TelosbSerial:
             for node_id in self.nodes.keys():
                 coefficients=SensorRegress.findNodeCoefficients(self.nodes[node_id])
                 print coefficients
-                #self.send_coefficients(node_id,coefficients)
+                self.send_coefficients(node_id,coefficients)
 
 
     def receive(self, src, msg):
@@ -111,15 +116,23 @@ class TelosbSerial:
             print time.time(), src, seq, hum, temp, light
             #write_reading_to_file(src, temp, light, hum)
 
+            reset=False
+            #Reset signal from root due to too high error
+            if src==0 and seq==0 and hum==0 and temp==0 and light==0:
+                reset=True
+                self.predict_state=False
+                self.reset()
+
+
             #Checking if predict_state
             if src==999 and seq==999 and hum==999 and temp==999 and light==999:
                 self.predict_state=True
 
             #If not in the predict state then add measurement to the sensor
-            if not self.predict_state:
+            if not self.predict_state and not reset:
                 self.nodes = SensorRegress.addMeasurementToNode(self.nodes, src, temp, light, hum)
 
-            if check_minimum_training(self.nodes, self.training_size):
+            if not self.predict_state and check_minimum_training(self.nodes, self.training_size):
                 self.run_regressions_send_coefficients()
 
             #sys.stdout.flush()
